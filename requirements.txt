@@ -3,3 +3,6 @@ langchain-core
 langchain-mistralai
 python-dotenv
 langchain-community
+streamlit
+tavily-python
+rich
