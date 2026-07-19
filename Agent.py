@@ -8,6 +8,7 @@ from langchain.tools import tool
 from langchain_core.messages import HumanMessage, ToolMessage
 from tavily import TavilyClient
 from rich import print
+from langchain.agents import create_agent
 
 # Now lets create some tools
 
@@ -69,17 +70,13 @@ def get_news(city: str) -> str:
 
 llm = ChatMistralAI(model="mistral-medium-latest")
 
-tools = ({
-    "get_weather" : get_weather,
-    "get_news" : get_news
-})
-
-llm_with_tool = llm.bind_tools([get_news, get_weather])
+agent = create_agent(
+    llm,
+    tools = [get_news, get_weather],
+    system_prompt = "You are a helpful city assistant."
+)
 
 if __name__ == "__main__":
-    #Agent LOOP - very important
-    messages = []
-    
     print("City Intelligence System")
     print("Enter 0 to quit")
     print("---------------------------------------")
@@ -89,32 +86,6 @@ if __name__ == "__main__":
         if user_input == "0":
             print("Exiting the AI system. Thanks for using!")
             break
-        messages.append(HumanMessage(content = user_input))
-    
-        while True:
-            result = llm_with_tool.invoke(messages)
-            messages.append(result)
-    
-            # if tool is required
-            if result.tool_calls:
-                for tool_call in result.tool_calls:
-                    tool_name = tool_call["name"]
-    
-                    # human in the loop
-                    confirm = input(f"Do you want to allow the tool {tool_name} to run? (y/n) : ")
-                    if confirm.lower() != "y":
-                        print("Exiting")
-                        break
-                    else:
-                        tool_result = tools[tool_name].invoke(tool_call)
-                        messages.append(
-                            ToolMessage(
-                                content = tool_result,
-                                tool_call_id = tool_call["id"])
-                        )
-                continue
-            else:
-                print("AI : ", result.content)
-                messages.append(result)
-                break
         
+        result = agent.invoke({"input" : user_input})
+        print("AI : ", result["output"])
